@@ -40,6 +40,16 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="silos/painel-silo"
+        options={{
+          title: 'Silos',
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="cylinder.fill" color={color} />
+          ),
+        }}
+      />
     </Tabs>
+    
   );
 }
