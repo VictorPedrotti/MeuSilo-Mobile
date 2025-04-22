@@ -28,7 +28,7 @@ module.exports = (sequelize, DataTypes) => {
       beforeUpdate: async (usuario) => {
         if (usuario.changed('senha')) {
           const salt = await bcrypt.genSalt(10);
-          usuario.senha = await bcrypt.hash(usuario.senha, salt)
+          usuario.senha = await bcrypt.hash(usuario.senha, salt);
         }
       }
     }
@@ -36,7 +36,7 @@ module.exports = (sequelize, DataTypes) => {
 
   Usuario.prototype.validarSenha = async function (senha) {
     return await bcrypt.compare(senha, this.senha);
-  }
+  };
   
   return Usuario;
 };

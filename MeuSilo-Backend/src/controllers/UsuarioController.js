@@ -1,3 +1,5 @@
+/* eslint-disable no-undef */
+/* eslint-disable no-unused-vars */
 const Controller = require('./Controller.js');
 const UsuarioServices = require('../services/UsuarioServices.js');
 const jwt = require('../utils/jwt.js');
@@ -28,11 +30,11 @@ class UsuarioController extends Controller {
   }
 
   async loginUsuario(req, res) {
-    const [, hash] = req.headers.authorization.split(' ')
-    const [email, senha] = Buffer.from(hash, 'base64').toString().split(':')
+    const [, hash] = req.headers.authorization.split(' ');
+    const [email, senha] = Buffer.from(hash, 'base64').toString().split(':');
 
     try {
-      const usuario = await this.entidadeService.buscaUsuarioPorCredencial(email, senha)
+      const usuario = await this.entidadeService.buscaUsuarioPorCredencial(email, senha);
 
       if (!usuario) {
         return res.status(401).json({ mensagem: 'Email ou senha incorretos.' });

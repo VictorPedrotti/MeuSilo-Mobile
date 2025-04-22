@@ -11,14 +11,14 @@ class UsuarioServices extends Services {
     const usuario = await dataSource['Usuario'].findOne({ where: { email } });
 
     if (usuario && await usuario.validarSenha(senha)) {
-      return usuario
+      return usuario;
     }
     return null;
   }
 
   async buscaPorEmail(email){
     const usuario = await dataSource['Usuario'].findOne({ where: { email } });
-    return usuario
+    return usuario;
   }
 }
 
