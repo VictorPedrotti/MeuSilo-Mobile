@@ -5,6 +5,7 @@ import * as Yup from 'yup';
 import { Link, router, useFocusEffect } from 'expo-router';
 import { TextInputMask } from 'react-native-masked-text';
 import { registerUser } from '@/services/authService';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface FormValues {
   nomeCompleto: string;
@@ -39,7 +40,8 @@ const validationSchema = Yup.object().shape({
 
 export default function RegisterScreen() {
   const formikRef = React.useRef<FormikProps<FormValues>>(null);
-  
+  const { login } = useAuth();
+
   useFocusEffect(
     React.useCallback(() => {
       return () => {
@@ -52,29 +54,34 @@ export default function RegisterScreen() {
     const [day, month, year] = dateStr.split('/');
     return `${year}-${month}-${day}`;
   };
-  
+
   const handleSubmit = async (values: FormValues) => {
-    const cleanValues = {
-      nome: values.nomeCompleto,
-      cpf: values.cpf.replace(/\D/g, ''),
-      telefone: values.telefone.replace(/\D/g, ''),
-      data_nascimento: formatDateToISO(values.dataNascimento),
-      email: values.email,
-      senha: values.senha
-    };
-  
-    const result = await registerUser(cleanValues);
-  
-    if (result.success) {
-      Alert.alert('Sucesso', 'Cadastro realizado com sucesso!');
-      router.replace('/auth/login');
-    } else {
-      Alert.alert('Erro', result.message);
+    try {
+      const cleanValues = {
+        nome: values.nomeCompleto,
+        cpf: values.cpf.replace(/\D/g, ''),
+        telefone: values.telefone.replace(/\D/g, ''),
+        data_nascimento: formatDateToISO(values.dataNascimento),
+        email: values.email,
+        senha: values.senha
+      };
+
+      const result = await registerUser(cleanValues);
+
+      if (result.success) {
+        await login(result.token, result.user);
+        Alert.alert('Sucesso', 'Cadastro realizado com sucesso!');
+      } else {
+        Alert.alert('Erro', result.message || 'Ocorreu um erro ao cadastrar');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      Alert.alert('Erro', 'Ocorreu um erro inesperado');
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
+    <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
       <View style={styles.container}>
         <View style={styles.titleContainer}>
           <Text style={styles.title}>REGISTRE-SE</Text>
@@ -96,10 +103,10 @@ export default function RegisterScreen() {
         >
           {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
             <View style={styles.formContainer}>
-              {/** Nome Completo */}
+              {/* Nome Completo */}
               <Text style={styles.label}>Nome Completo</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, touched.nomeCompleto && errors.nomeCompleto ? styles.inputError : null]}
                 placeholder="Digite seu nome completo"
                 placeholderTextColor="#999"
                 onChangeText={handleChange('nomeCompleto')}
@@ -110,10 +117,10 @@ export default function RegisterScreen() {
                 <Text style={styles.errorText}>{errors.nomeCompleto}</Text>
               )}
 
-              {/** CPF com máscara */}
+              {/* CPF */}
               <Text style={styles.label}>CPF</Text>
               <TextInputMask
-                style={styles.input}
+                style={[styles.input, touched.cpf && errors.cpf ? styles.inputError : null]}
                 placeholder="Digite seu CPF"
                 placeholderTextColor="#999"
                 type={'cpf'}
@@ -122,12 +129,14 @@ export default function RegisterScreen() {
                 value={values.cpf}
                 keyboardType="numeric"
               />
-              {touched.cpf && errors.cpf && <Text style={styles.errorText}>{errors.cpf}</Text>}
+              {touched.cpf && errors.cpf && (
+                <Text style={styles.errorText}>{errors.cpf}</Text>
+              )}
 
-              {/** Telefone com máscara */}
+              {/* Telefone */}
               <Text style={styles.label}>Telefone</Text>
               <TextInputMask
-                style={styles.input}
+                style={[styles.input, touched.telefone && errors.telefone ? styles.inputError : null]}
                 placeholder="Digite seu telefone"
                 placeholderTextColor="#999"
                 type={'cel-phone'}
@@ -141,33 +150,33 @@ export default function RegisterScreen() {
                 value={values.telefone}
                 keyboardType="phone-pad"
               />
-              {touched.telefone && errors.telefone && <Text style={styles.errorText}>{errors.telefone}</Text>}
+              {touched.telefone && errors.telefone && (
+                <Text style={styles.errorText}>{errors.telefone}</Text>
+              )}
 
-              {/** Data de Nascimento */}
+              {/* Data de Nascimento */}
               <Text style={styles.label}>Data de Nascimento</Text>
-              <View style={styles.dateContainer}>
-                <TextInputMask
-                  style={[styles.input, styles.dateInput]}
-                  placeholder="Digite sua data de nascimento"
-                  placeholderTextColor="#999"
-                  type={'datetime'}
-                  options={{
-                    format: 'DD/MM/YYYY'
-                  }}
-                  onChangeText={handleChange('dataNascimento')}
-                  onBlur={handleBlur('dataNascimento')}
-                  value={values.dataNascimento}
-                  keyboardType="numeric"
-                />
-              </View>
+              <TextInputMask
+                style={[styles.input, touched.dataNascimento && errors.dataNascimento ? styles.inputError : null]}
+                placeholder="DD/MM/AAAA"
+                placeholderTextColor="#999"
+                type={'datetime'}
+                options={{
+                  format: 'DD/MM/YYYY'
+                }}
+                onChangeText={handleChange('dataNascimento')}
+                onBlur={handleBlur('dataNascimento')}
+                value={values.dataNascimento}
+                keyboardType="numeric"
+              />
               {touched.dataNascimento && errors.dataNascimento && (
                 <Text style={styles.errorText}>{errors.dataNascimento}</Text>
               )}
 
-              {/** E-mail */}
+              {/* Email */}
               <Text style={styles.label}>E-mail</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, touched.email && errors.email ? styles.inputError : null]}
                 placeholder="Digite seu e-mail"
                 placeholderTextColor="#999"
                 onChangeText={handleChange('email')}
@@ -176,12 +185,14 @@ export default function RegisterScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
-              {touched.email && errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+              {touched.email && errors.email && (
+                <Text style={styles.errorText}>{errors.email}</Text>
+              )}
 
-              {/** Senha */}
+              {/* Senha */}
               <Text style={styles.label}>Senha</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, touched.senha && errors.senha ? styles.inputError : null]}
                 placeholder="Digite sua senha"
                 placeholderTextColor="#999"
                 onChangeText={handleChange('senha')}
@@ -189,12 +200,14 @@ export default function RegisterScreen() {
                 value={values.senha}
                 secureTextEntry
               />
-              {touched.senha && errors.senha && <Text style={styles.errorText}>{errors.senha}</Text>}
+              {touched.senha && errors.senha && (
+                <Text style={styles.errorText}>{errors.senha}</Text>
+              )}
 
-              {/** Confirmar Senha */}
+              {/* Confirmar Senha */}
               <Text style={styles.label}>Confirmar Senha</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, touched.confirmarSenha && errors.confirmarSenha ? styles.inputError : null]}
                 placeholder="Confirme sua senha"
                 placeholderTextColor="#999"
                 onChangeText={handleChange('confirmarSenha')}
@@ -206,14 +219,18 @@ export default function RegisterScreen() {
                 <Text style={styles.errorText}>{errors.confirmarSenha}</Text>
               )}
 
-              {/** Botão de Cadastro */}
-              <TouchableOpacity style={styles.button} onPress={() => handleSubmit()}>
+              {/* Botão de Cadastro */}
+              <TouchableOpacity
+                style={styles.button}
+                onPress={() => handleSubmit()}
+                activeOpacity={0.8}
+              >
                 <Text style={styles.buttonText}>Cadastrar</Text>
               </TouchableOpacity>
 
-              {/** Link para Login */}
-              <Link href="/auth/login">
-                <Text style={styles.textLink}>Já tem uma conta? <Text style={styles.link}>Faça login</Text></Text>
+              {/* Link para Login */}
+              <Link href="/(auth)/login" style={styles.linkContainer}>
+                <Text style={styles.textLink}>Já tem uma conta? <Text style={styles.linkText}>Faça login</Text></Text>
               </Link>
             </View>
           )}
@@ -226,25 +243,22 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
+    backgroundColor: '#F2F2F2',
   },
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F2',
     paddingVertical: 20,
   },
   titleContainer: {
-    top: 30,
     backgroundColor: '#228B22',
     borderRadius: 20,
     paddingVertical: 20,
     paddingHorizontal: 50,
-    minWidth: 250,
+    marginBottom: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'absolute',
-    zIndex: 1,
   },
   title: {
     fontSize: 24,
@@ -254,8 +268,7 @@ const styles = StyleSheet.create({
   formContainer: {
     width: '100%',
     alignItems: 'center',
-    paddingTop: 100,
-    paddingBottom: 30,
+    paddingHorizontal: 20,
   },
   label: {
     alignSelf: 'flex-start',
@@ -263,53 +276,59 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14,
     marginBottom: 5,
+    color: '#333',
   },
   input: {
     width: '80%',
-    padding: 10,
-    borderRadius: 5,
+    padding: 15,
+    borderRadius: 8,
     backgroundColor: '#fff',
     marginBottom: 5,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    fontSize: 16,
   },
-  dateContainer: {
-    width: '80%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    position: 'relative',
-    marginBottom: 5,
-  },
-  dateInput: {
-    flex: 1,
-    paddingRight: 40,
-  },
-  calendarIcon: {
-    position: 'absolute',
-    right: 15,
+  inputError: {
+    borderColor: '#E74C3C',
+    backgroundColor: '#FDEDEC',
   },
   button: {
     backgroundColor: '#228B22',
-    padding: 12,
-    borderRadius: 20,
+    padding: 15,
+    borderRadius: 8,
     width: '80%',
     alignItems: 'center',
     marginTop: 20,
     marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   buttonText: {
     color: 'white',
     fontWeight: 'bold',
+    fontSize: 16,
   },
   errorText: {
-    color: 'red',
+    color: '#E74C3C',
     fontSize: 12,
     marginBottom: 10,
     alignSelf: 'flex-start',
     marginLeft: '10%',
   },
-  textLink: {
+  linkContainer: {
     marginTop: 15,
   },
-  link: {
+  textLink: {
+    fontSize: 14,
+    color: '#34495E',
+  },
+  linkText: {
     color: '#228B22',
     fontWeight: 'bold',
   },

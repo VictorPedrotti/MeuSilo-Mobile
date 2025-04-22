@@ -25,6 +25,11 @@ export const registerUser = async (userData: RegisterData) => {
   try {
     const response = await axios.post(`${API_BASE_URL}/cadastro`, userData);
     
+    await AsyncStorage.multiSet([
+      ['token', response.data.token],
+      ['userData', JSON.stringify(response.data.user)]
+    ]);
+
     return {
       user: response.data.user,
       token: response.data.token,
@@ -58,7 +63,10 @@ export const loginUser = async ({ email, senha }: LoginData) => {
       },
     });
 
-    await AsyncStorage.setItem('token', response.data.token);
+    await AsyncStorage.multiSet([
+      ['token', response.data.token],
+      ['userData', JSON.stringify(response.data.user)] 
+    ]);
 
     return {
       user: response.data.user,
