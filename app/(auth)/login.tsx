@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { loginUser } from "@/services/authService";
 import { useState } from "react";
@@ -33,79 +33,86 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.titleContainer}>
-        <Text style={styles.title}>MEU SILO</Text>
+    <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <View style={styles.container}>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>MEU SILO</Text>
+        </View>
+
+        {/* Exibe mensagem de erro se existir */}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <View style={styles.formContainer}>
+          <Text style={styles.label}>Usuário</Text>
+          <TextInput 
+            style={[styles.input, error ? styles.inputError : null]} 
+            placeholder="Digite seu usuário" 
+            placeholderTextColor="#999"
+            value={usuario}
+            onChangeText={(text) => {
+              setUsuario(text);
+              setError(""); 
+            }}
+          />
+
+          <Text style={styles.label}>Senha</Text>
+          <TextInput 
+            style={[styles.input, error ? styles.inputError : null]} 
+            placeholder="Digite sua senha" 
+            placeholderTextColor="#999"
+            secureTextEntry 
+            value={senha}
+            onChangeText={(text) => {
+              setSenha(text);
+              setError(""); 
+            }}
+          />
+
+          <Text style={styles.forgotPassword}>Esqueci senha</Text>
+
+          <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
+            <Text style={styles.registerText}>Não tem cadastro? <Text style={styles.link}>Cadastre-se</Text></Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+            <Text style={styles.buttonText}>{loading ? "Entrando..." : "Entrar"}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-
-      {/* Exibe mensagem de erro se existir */}
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-      <Text style={styles.label}>Usuário</Text>
-      <TextInput 
-        style={[styles.input, error ? styles.inputError : null]} 
-        placeholder="Digite seu usuário" 
-        placeholderTextColor="#999"
-        value={usuario}
-        onChangeText={(text) => {
-          setUsuario(text);
-          setError(""); 
-        }}
-      />
-
-      <Text style={styles.label}>Senha</Text>
-      <TextInput 
-        style={[styles.input, error ? styles.inputError : null]} 
-        placeholder="Digite sua senha" 
-        placeholderTextColor="#999"
-        secureTextEntry 
-        value={senha}
-        onChangeText={(text) => {
-          setSenha(text);
-          setError(""); 
-        }}
-      />
-
-      <Text style={styles.forgotPassword}>Esqueci senha</Text>
-
-      <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
-        <Text style={styles.registerText}>Não tem cadastro? <Text style={styles.link}>Cadastre-se</Text></Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-        <Text style={styles.buttonText}>{loading ? "Entrando..." : "Entrar"}</Text>
-      </TouchableOpacity>
-    </View>
+    </ScrollView>
   ); 
 }
 
-
 const styles = StyleSheet.create({
+  scrollContainer: {
+    flexGrow: 1,
+    backgroundColor: "#F2F2F2"
+  },
   container: { 
     flex: 1, 
-    justifyContent: "center", 
+    justifyContent: "flex-start", 
     alignItems: "center", 
-    backgroundColor: "#F2F2F2" 
+    paddingTop: 40, 
+    paddingBottom: 20, 
   },
-  
   titleContainer: {
-    top: 30,
     backgroundColor: '#228B22',
     borderRadius: 20,
     paddingVertical: 30,
     paddingHorizontal: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'absolute',
-    zIndex: 1,
+    marginBottom: 40, 
   },
-  
+  formContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
   title: { 
     fontSize: 24, 
     fontWeight: "bold", 
     color: "#fff" 
   },
-  
   label: {
     alignSelf: 'flex-start',
     marginLeft: '10%',
@@ -114,7 +121,6 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     color: '#333',
   },
-  
   input: { 
     width: "80%", 
     padding: 15,
@@ -125,12 +131,10 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     fontSize: 16,
   },
-  
   inputError: {
     borderColor: '#E74C3C',
     backgroundColor: '#FDEDEC',
   },
-  
   errorText: {
     color: '#E74C3C',
     marginBottom: 15,
@@ -139,17 +143,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  
-  fieldError: {
-    color: '#E74C3C',
-    fontSize: 12,
-    marginTop: -5,
-    marginBottom: 10,
-    width: '80%',
-    alignSelf: 'flex-start',
-    marginLeft: '10%',
-  },
-  
   forgotPassword: { 
     fontSize: 14, 
     color: "#7F8C8D", 
@@ -157,18 +150,15 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     marginRight: '10%',
   },
-  
   registerText: { 
     fontSize: 14, 
     color: '#34495E',
     marginBottom: 20,
   },
-  
   link: { 
     color: "#228B22", 
     fontWeight: "bold" 
   },
-  
   button: { 
     backgroundColor: "#228B22", 
     padding: 15, 
@@ -185,14 +175,9 @@ const styles = StyleSheet.create({
     elevation: 5,
     marginTop: 10,
   },
-  
   buttonText: { 
     color: "white", 
     fontWeight: "bold",
     fontSize: 16,
-  },
-  
-  buttonDisabled: {
-    backgroundColor: "#BDC3C7",
   },
 });

@@ -112,7 +112,7 @@ const PainelSilo: React.FC = () => {
             <Text style={styles.buttonText}>Verificar Silo</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.registerButton} /*onPress={() => router.push('/silos/cadastrar')} */>
+          <TouchableOpacity style={styles.registerButton} onPress={() => router.push('/silos/formulario-silo')} >
             <Text style={styles.buttonText}>Cadastrar Silo</Text>
           </TouchableOpacity>
         </View>
