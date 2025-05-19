@@ -6,11 +6,11 @@ module.exports = (sequelize, DataTypes) => {
   class Silo extends Model {
     static associate(models) {
       Silo.belongsTo(models.Usuario, {
-        foreignKey: 'usuario_id'
+        foreignKey: 'usuario_id',
       }),
       Silo.belongsTo(models.Cultura, {
         foreignKey: 'cultura_id'
-      })
+      });
     }
   }
   Silo.init({

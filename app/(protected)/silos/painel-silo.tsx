@@ -1,56 +1,70 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, TouchableOpacity, Image, Dimensions, StyleSheet, Platform, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, Image, Dimensions, StyleSheet, Platform, ActivityIndicator, Alert } from "react-native";
 import Carousel from 'react-native-reanimated-carousel';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthGuard from "@/components/AuthGuard";
 import { router } from "expo-router";
 import type { ICarouselInstance } from 'react-native-reanimated-carousel';
+import { useFocusEffect } from "@react-navigation/native";
 
 interface SiloItem {
   id: number;
-  image: any;
+  nome: string;
+  capacidade: number;
+  armazenado: number;
+  cultura_id?: number;
+  usuario_id: number;
 }
 
 interface UserData {
+  id: number;
   nome: string;
 }
 
-const silos: SiloItem[] = [
-  { id: 1, image: require("../../../assets/images/silo1.png") },
-  { id: 2, image: require("../../../assets/images/silo2.png") },
-  { id: 3, image: require("../../../assets/images/silo3.png") },
-];
-
 const PainelSilo: React.FC = () => {
   const [activeIndex, setActiveIndex] = useState<number>(0);
-  const [userName, setUserName] = useState<string>('Carregando...');
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [userSilos, setUserSilos] = useState<SiloItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const carouselRef = useRef<ICarouselInstance>(null);
   const { width } = Dimensions.get("window");
   const SafeCarousel = Carousel as any;
 
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const userDataString = await AsyncStorage.getItem('userData');
+  const loadSilos = async () => {
+    try {
+      setIsLoading(true);
+      const userDataString = await AsyncStorage.getItem('userData');
+      if (!userDataString) throw new Error('Dados do usuário não encontrados');
 
-        if (userDataString) {
-          const userData: UserData = JSON.parse(userDataString);
-          setUserName(userData.nome);
-        } else {
-          setUserName('Usuário');
-        }
-      } catch (error) {
-        console.error('Erro ao carregar dados:', error);
-        setUserName('Erro ao carregar');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      const userData: UserData = JSON.parse(userDataString);
+      setUserData(userData);
 
-    loadUserData();
-  }, []);
+      const token = await AsyncStorage.getItem('token');
+      if (!token) throw new Error('Token não encontrado');
+
+      const response = await fetch(`http://localhost:3000/usuarios/${userData.id}/silos`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) throw new Error('Erro ao carregar silos');
+
+      const silos: SiloItem[] = await response.json();
+      setUserSilos(silos);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      Alert.alert('Erro', 'Não foi possível carregar os silos');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadSilos();
+      return () => {};
+    }, [])
+  );
 
   const handleLogout = async () => {
     await AsyncStorage.multiRemove(['token', 'userData']);
@@ -58,8 +72,15 @@ const PainelSilo: React.FC = () => {
   };
 
   const renderItem = ({ item }: { item: SiloItem }) => (
-    <View style={styles.card}>
-      <Image source={item.image} style={styles.siloImage} resizeMode="contain" />
+    <View style={styles.cardContainer}>
+      <Text style={styles.siloName}>{item.nome}</Text>
+      <View style={styles.card}>
+        <Image 
+          source={require("../../../assets/images/silo1.png")} 
+          style={styles.siloImage} 
+          resizeMode="contain" 
+        />
+      </View>
     </View>
   );
 
@@ -67,6 +88,14 @@ const PainelSilo: React.FC = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#228B22" />
+      </View>
+    );
+  }
+
+  if (!userData) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.errorText}>Erro ao carregar dados do usuário</Text>
       </View>
     );
   }
@@ -79,7 +108,7 @@ const PainelSilo: React.FC = () => {
           <View style={styles.avatar}>
             <MaterialCommunityIcons name="account" size={28} color="#228B22" />
           </View>
-          <Text style={styles.welcomeText}>BEM-VINDO, {userName.toUpperCase()}!</Text>
+          <Text style={styles.welcomeText}>BEM-VINDO, {userData.nome.toUpperCase()}!</Text>
           <View style={styles.headerIcons}>
             <TouchableOpacity style={styles.settingsButton}>
               <MaterialCommunityIcons name="cog" size={24} color="#fff" />
@@ -92,30 +121,50 @@ const PainelSilo: React.FC = () => {
 
         {/* Carrossel de Silos */}
         <View style={styles.carouselContainer}>
-          <SafeCarousel
-            loop
-            width={width}
-            height={300}
-            data={silos}
-            renderItem={renderItem}
-            onSnapToItem={setActiveIndex}
-            ref={carouselRef}
-            panGestureHandlerProps={{
-              activeOffsetX: [-10, 10],
-            }}
-          />
+          {userSilos.length > 0 ? (
+            <SafeCarousel
+              loop={false}
+              width={width}
+              height={350}
+              data={userSilos}
+              renderItem={renderItem}
+              onSnapToItem={setActiveIndex}
+              ref={carouselRef}
+              panGestureHandlerProps={{
+                activeOffsetX: [-10, 10],
+              }}
+            />
+          ) : (
+            <View style={styles.noSilosContainer}>
+              <Text style={styles.noSilosText}>Nenhum silo cadastrado</Text>
+              <TouchableOpacity 
+                style={styles.registerButton} 
+                onPress={() => router.push('/silos/formulario-silo')}
+              >
+                <Text style={styles.buttonText}>Cadastrar Primeiro Silo</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Botões de Ação */}
-        <View style={styles.buttonsContainer}>
-          <TouchableOpacity style={styles.verifyButton} /*onPress={() => router.push('/silos/verificar')} */>
-            <Text style={styles.buttonText}>Verificar Silo</Text>
-          </TouchableOpacity>
+        {userSilos.length > 0 && (
+          <View style={styles.buttonsContainer}>
+            <TouchableOpacity 
+              style={styles.verifyButton}
+              //onPress={() => router.push(`/silos/verificar/${userSilos[activeIndex].id}`)}
+            >
+              <Text style={styles.buttonText}>Verificar Silo</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity style={styles.registerButton} onPress={() => router.push('/silos/formulario-silo')} >
-            <Text style={styles.buttonText}>Cadastrar Silo</Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity 
+              style={styles.registerButton} 
+              onPress={() => router.push('/silos/formulario-silo')}
+            >
+              <Text style={styles.buttonText}>Cadastrar Novo Silo</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </AuthGuard>
   );
@@ -180,14 +229,21 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     width: '100%'
   },
+  cardContainer: {
+    alignItems: 'center',
+    marginBottom: 10
+  },
+  siloName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#228B22',
+    marginBottom: 10
+  },
   card: {
     backgroundColor: '#fff',
     borderRadius: 15,
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: '90%',
     height: 300,
-    marginHorizontal: 10,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -241,6 +297,20 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
   },
+  noSilosContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20
+  },
+  noSilosText: {
+    fontSize: 18,
+    color: '#666',
+    marginBottom: 20
+  },
+  errorText: {
+    fontSize: 18,
+    color: 'red'
+  }
 });
 
 export default PainelSilo;

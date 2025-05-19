@@ -1,6 +1,5 @@
 const Services = require('./Services.js');
 const dataSource = require('../database/models');
-const usuario = require('../database/models/usuario.js');
 
 class UsuarioServices extends Services {
   constructor(){
@@ -19,6 +18,12 @@ class UsuarioServices extends Services {
   async buscaPorEmail(email){
     const usuario = await dataSource['Usuario'].findOne({ where: { email } });
     return usuario;
+  }
+
+  async buscaSilosPorUsuario(id) {
+    const usuario = await super.pegaUmRegistroPorId(id);
+    const listaSilos = await usuario.getSilosUsuario();
+    return listaSilos;
   }
 }
 

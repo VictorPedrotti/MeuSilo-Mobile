@@ -48,6 +48,16 @@ class UsuarioController extends Controller {
       return res.status(401).json({ erro: erro.message });  
     }
   }
+
+  async buscaSilosPorUsuario(req, res) {
+    try {
+      const { id } = req.params;
+      const listaSilos = await usuarioServices.buscaSilosPorUsuario(Number(id));
+      return res.status(200).json(listaSilos);
+    } catch (error) {
+      res.status(500).json({ erro: error.message }); 
+    }
+  }
 }
 
 module.exports = UsuarioController;

@@ -1,7 +1,7 @@
 const Services = require('./Services.js');
 
 class SiloService extends Services {
-  constructor(){
+  constructor() {
     super('Silo');
   }
 }

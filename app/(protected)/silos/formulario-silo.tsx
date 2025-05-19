@@ -1,22 +1,52 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '@/contexts/AuthContext';
+import { listaCulturas } from '@/services/culturaService';
 
 const FormularioSilo = () => {
+  const { userData } = useAuth();
+
   const [formData, setFormData] = useState({
     nome: '',
     capacidade: '',
     armazenado: '',
-    cultura: ''
+    cultura_id: ''
   });
+
+  const [culturas, setCulturas] = useState<Array<{ id: string, descricao: string }>>([]);
+  const [loadingCulturas, setLoadingCulturas] = useState(true);
+
   const [errors, setErrors] = useState({
     nome: '',
     capacidade: '',
     armazenado: '',
-    cultura: ''
+    cultura_id: ''
   });
+
+  useEffect(() => {
+    const carregarCulturas = async () => {
+      try {
+        const resultado = await listaCulturas();
+        
+        if (resultado.success) {
+          setCulturas(resultado.culturas);
+        } else {
+          Alert.alert('Erro', resultado.message || 'Erro ao carregar culturas');
+        }
+      } catch (error) {
+        console.error('Erro ao carregar culturas:', error);
+        Alert.alert('Erro', 'Não foi possível carregar as culturas');
+      } finally {
+        setLoadingCulturas(false);
+      }
+    };
+
+    carregarCulturas();
+  }, []);
 
   // Função para validar números decimais
   const validateNumber = (value: string) => {
@@ -25,13 +55,13 @@ const FormularioSilo = () => {
 
   const validateField = (name: string, value: string) => {
     let error = '';
-    
+
     if (!value.trim()) {
       error = 'Campo obrigatório';
     } else if ((name === 'capacidade' || name === 'armazenado') && !validateNumber(value)) {
       error = 'Digite um número válido';
     }
-    
+
     setErrors(prev => ({ ...prev, [name]: error }));
     return !error;
   };
@@ -46,48 +76,81 @@ const FormularioSilo = () => {
         value = parts[0] + '.' + parts.slice(1).join('');
       }
     }
-    
+
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     // Validação em tempo real para campos numéricos
     if ((name === 'capacidade' || name === 'armazenado') && value) {
       validateField(name, value);
     }
   };
 
-  const handleSubmit = () => {
-    let isValid = true;
-    
-    // Validar todos os campos
-    Object.entries(formData).forEach(([key, value]) => {
-      const fieldValid = validateField(key, value);
-      if (!fieldValid) isValid = false;
-    });
+  const handleSubmit = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
 
-    // Validação adicional para valores numéricos
-    if (isValid && parseFloat(formData.armazenado) > parseFloat(formData.capacidade)) {
-      setErrors(prev => ({
-        ...prev,
-        armazenado: 'Não pode ser maior que a capacidade'
-      }));
-      isValid = false;
+      if (!token || !userData?.id) {
+        Alert.alert('Erro', 'Faça login para cadastrar um silo');
+        return;
+      }
+
+      // Converter valores numéricos
+      const capacidade = parseFloat(formData.capacidade);
+      const armazenado = parseFloat(formData.armazenado);
+
+      // Validar valores
+      if (isNaN(capacidade)) {
+        Alert.alert('Erro', 'Capacidade inválida');
+        return;
+      }
+
+      if (isNaN(armazenado)) {
+        Alert.alert('Erro', 'Quantidade armazenada inválida');
+        return;
+      }
+
+      if (armazenado > capacidade) {
+        Alert.alert('Erro', 'Armazenado não pode ser maior que a capacidade');
+        return;
+      }
+
+      if (!formData.cultura_id) {
+        Alert.alert('Erro', 'Selecione uma cultura');
+        return;
+      }
+
+      const payload = {
+        nome: formData.nome.trim(),
+        capacidade,
+        armazenado,
+        cultura_id: Number(formData.cultura_id),
+        usuario_id: userData.id
+      };
+
+      console.log(payload);
+
+      const response = await fetch('http://localhost:3000/silos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Mostrar mensagem mais detalhada do backend
+        throw new Error(data.erro || data.message || 'Erro ao cadastrar silo');
+      }
+
+      Alert.alert('Sucesso', 'Silo cadastrado com sucesso!');
+      router.back();
+    } catch (error: any) {
+      console.error('Erro completo:', error);
+      Alert.alert('Erro', error.message || 'Erro ao conectar com o servidor');
     }
-
-    if (!isValid) {
-      Alert.alert('Erro', 'Verifique os campos destacados');
-      return;
-    }
-
-    // Converter para double antes de enviar
-    const dadosParaEnviar = {
-      ...formData,
-      capacidade: parseFloat(formData.capacidade),
-      armazenado: parseFloat(formData.armazenado)
-    };
-
-    console.log('Dados validados:', dadosParaEnviar);
-    Alert.alert('Sucesso', 'Silo cadastrado com sucesso!');
-    router.back();
   };
 
   return (
@@ -101,7 +164,7 @@ const FormularioSilo = () => {
         <View style={styles.headerRightPlaceholder} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
       >
@@ -145,21 +208,29 @@ const FormularioSilo = () => {
           {errors.armazenado ? <Text style={styles.errorText}>{errors.armazenado}</Text> : null}
 
           {/* Campo Cultura */}
-          <Text style={styles.label}>Cultura</Text>
-          <View style={[styles.pickerContainer, errors.cultura ? styles.inputError : null]}>
-            <Picker
-              selectedValue={formData.cultura}
-              onValueChange={(itemValue) => handleChange('cultura', itemValue)}
-              style={styles.picker}
-              onBlur={() => validateField('cultura', formData.cultura)}
-            >
-              <Picker.Item label="Selecione uma cultura" value="" />
-              <Picker.Item label="Milho" value="milho" />
-              <Picker.Item label="Soja" value="soja" />
-              <Picker.Item label="Trigo" value="trigo" />
-            </Picker>
+         <Text style={styles.label}>Cultura</Text>
+          <View style={[styles.pickerContainer, errors.cultura_id ? styles.inputError : null]}>
+            {loadingCulturas ? (
+              <Text style={styles.loadingText}>Carregando culturas...</Text>
+            ) : (
+              <Picker
+                selectedValue={formData.cultura_id}
+                onValueChange={(itemValue) => handleChange('cultura_id', itemValue)}
+                style={styles.picker}
+                onBlur={() => validateField('cultura_id', formData.cultura_id)}
+              >
+                <Picker.Item label="Selecione uma cultura" value="" />
+                {culturas.map((cultura) => (
+                  <Picker.Item 
+                    key={cultura.id} 
+                    label={cultura.descricao} 
+                    value={cultura.id} 
+                  />
+                ))}
+              </Picker>
+            )}
           </View>
-          {errors.cultura ? <Text style={styles.errorText}>{errors.cultura}</Text> : null}
+          {errors.cultura_id ? <Text style={styles.errorText}>{errors.cultura_id}</Text> : null}
 
           {/* Botão de Salvar */}
           <TouchableOpacity
@@ -279,6 +350,11 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+   loadingText: {
+    padding: 15,
+    textAlign: 'center',
+    color: '#666',
   },
 });
 

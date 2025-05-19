@@ -1,9 +1,12 @@
 const { Router } = require('express');
 const SiloController = require('../controllers/SiloController.js');
+const { validaAutenticacao } = require('../utils/auth.js');
 
 const siloController = new SiloController();
 
 const router = Router();
+
+router.use(validaAutenticacao);
 
 router.get('/silos', (req, res) => siloController.pegaTodos(req, res));
 router.get('/silos/:id', (req, res) => siloController.pegaUmPorId(req, res));
