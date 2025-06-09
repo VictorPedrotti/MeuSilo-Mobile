@@ -7,6 +7,7 @@ import AuthGuard from "@/components/AuthGuard";
 import { router } from "expo-router";
 import type { ICarouselInstance } from 'react-native-reanimated-carousel';
 import { useFocusEffect } from "@react-navigation/native";
+import RealizarPedidoButton from "@/components/BotaoRealizarPedido";
 
 interface SiloItem {
   id: number;
@@ -62,7 +63,7 @@ const PainelSilo: React.FC = () => {
   useFocusEffect(
     React.useCallback(() => {
       loadSilos();
-      return () => {};
+      return () => { };
     }, [])
   );
 
@@ -71,19 +72,36 @@ const PainelSilo: React.FC = () => {
     router.replace('/(auth)/login');
   };
 
-  const renderItem = ({ item }: { item: SiloItem }) => (
-    <View style={styles.cardContainer}>
-      <Text style={styles.siloName}>{item.nome}</Text>
-      <View style={styles.card}>
-        <Image 
-          source={require("../../../assets/images/silo1.png")} 
-          style={styles.siloImage} 
-          resizeMode="contain" 
-        />
-      </View>
-    </View>
-  );
+  const renderItem = ({ item }: { item: SiloItem }) => {
+    const ocupacao = (item.armazenado / item.capacidade) * 100;
 
+    // Define a cor da barra com base na ocupação
+    let barColor = '#28a745'; // verde
+    if (ocupacao > 90) barColor = '#dc3545'; // vermelho
+    else if (ocupacao > 70) barColor = '#ffc107'; // amarelo
+
+    return (
+      <View style={styles.cardContainer}>
+        <Text style={styles.siloName}>{item.nome}</Text>
+        <View style={styles.card}>
+          <Image
+            source={require("../../../assets/images/silo1.png")}
+            style={styles.siloImage}
+          />
+          <View style={styles.infoContainer}>
+            <Text style={styles.infoText}>Capacidade: {item.capacidade} kg</Text>
+            <Text style={styles.infoText}>Armazenado: {item.armazenado} kg</Text>
+            <Text style={styles.infoText}>
+              Ocupação: <Text style={{ fontWeight: 'bold' }}>{ocupacao.toFixed(1)}%</Text>
+            </Text>
+            <View style={styles.progressBarContainer}>
+              <View style={[styles.progressBar, { width: `${ocupacao}%`, backgroundColor: barColor }]} />
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  };
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -110,7 +128,7 @@ const PainelSilo: React.FC = () => {
           </View>
           <Text style={styles.welcomeText}>BEM-VINDO, {userData.nome.toUpperCase()}!</Text>
           <View style={styles.headerIcons}>
-            <TouchableOpacity style={styles.settingsButton}>
+            <TouchableOpacity style={styles.settingsButton}  onPress={() => router.push('/perfil/tela-perfil')}>
               <MaterialCommunityIcons name="cog" size={24} color="#fff" />
             </TouchableOpacity>
             <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
@@ -137,8 +155,8 @@ const PainelSilo: React.FC = () => {
           ) : (
             <View style={styles.noSilosContainer}>
               <Text style={styles.noSilosText}>Nenhum silo cadastrado</Text>
-              <TouchableOpacity 
-                style={styles.registerButton} 
+              <TouchableOpacity
+                style={styles.registerButton}
                 onPress={() => router.push('/silos/formulario-silo')}
               >
                 <Text style={styles.buttonText}>Cadastrar Primeiro Silo</Text>
@@ -150,20 +168,18 @@ const PainelSilo: React.FC = () => {
         {/* Botões de Ação */}
         {userSilos.length > 0 && (
           <View style={styles.buttonsContainer}>
-            <TouchableOpacity 
-              style={styles.verifyButton}
-              //onPress={() => router.push(`/silos/verificar/${userSilos[activeIndex].id}`)}
-            >
-              <Text style={styles.buttonText}>Verificar Silo</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.registerButton} 
+            <TouchableOpacity
+              style={styles.registerButton}
               onPress={() => router.push('/silos/formulario-silo')}
             >
               <Text style={styles.buttonText}>Cadastrar Novo Silo</Text>
             </TouchableOpacity>
+            <View>
+              <RealizarPedidoButton />
+            </View>
           </View>
+
+
         )}
       </View>
     </AuthGuard>
@@ -226,12 +242,13 @@ const styles = StyleSheet.create({
     marginLeft: 10
   },
   carouselContainer: {
-    marginBottom: 30,
-    width: '100%'
+    marginBottom: 10,
+    width: '100%',
   },
   cardContainer: {
     alignItems: 'center',
-    marginBottom: 10
+    justifyContent: 'center',
+    paddingVertical: 10,
   },
   siloName: {
     fontSize: 18,
@@ -243,7 +260,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 15,
     width: '90%',
-    height: 300,
+    height: 400,
+    alignItems: 'center',
+    paddingBottom: 15,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -258,7 +277,7 @@ const styles = StyleSheet.create({
   },
   siloImage: {
     width: '100%',
-    height: '100%',
+    height: 180,
     resizeMode: "contain",
   },
   buttonsContainer: {
@@ -266,24 +285,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20
   },
-  verifyButton: {
-    backgroundColor: "#FF8C00",
-    padding: 15,
-    borderRadius: 10,
-    marginVertical: 10,
-    width: "100%",
-    alignItems: "center",
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-  },
   registerButton: {
     backgroundColor: "#228B22",
     padding: 15,
     borderRadius: 10,
-    width: "100%",
+    width: "80%",
     alignItems: "center",
     marginTop: 10,
     elevation: 3,
@@ -310,7 +316,38 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 18,
     color: 'red'
-  }
+  },
+  infoContainer: {
+    backgroundColor: '#fff',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    marginTop: 10,
+    borderRadius: 10,
+    width: '90%',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  infoText: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 4,
+  },
+  progressBarContainer: {
+    width: '90%',
+    height: 10,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 5,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  progressBar: {
+    height: '100%',
+    borderRadius: 5,
+  },
 });
 
 export default PainelSilo;
